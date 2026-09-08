@@ -72,12 +72,11 @@ else:
         direccion = cliente.get("Direccion_Centro_5km_Aprox", cliente.get("Direccion_Principal", "Sin dirección"))
         id_cliente = cliente.get("Código_Cliente", str(index))
         
-        # Construir link exacto con GPS de latitud y longitud
-        lat = str(cliente.get("Latitud centro", "")).strip().replace(",", ".")
-        lon = str(cliente.get("Longitud centro", "")).strip().replace(",", ".")
-        
-        if lat and lon and lat.lower() != "nan":
-            link_maps = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+        # Construir link usando la dirección automáticamente
+        if direccion and direccion != "Sin dirección":
+            # Reemplazamos los espacios por símbolos '+' para crear un link web válido
+            direccion_url = str(direccion).replace(" ", "+")
+            link_maps = f"https://www.google.com/maps/search/?api=1&query={direccion_url},+Bogotá"
         else:
             link_maps = ""
         
@@ -88,7 +87,7 @@ else:
             if link_maps:
                 st.markdown(f"[🗺️ Abrir en Google Maps y Navegar]({link_maps})", unsafe_allow_html=True)
             else:
-                st.warning("Este cliente no tiene coordenadas configuradas.")
+                st.warning("Este cliente no tiene una dirección válida para buscar en el mapa.")
             
             st.markdown("---")
             st.write("📸 **Constancia de Visita**")
@@ -118,8 +117,8 @@ else:
                             hoja_visitas.append_row([
                                 nombre, 
                                 f"{fecha_seleccionada} {hora_actual}", 
-                                lat, # Latitud guardada
-                                lon, # Longitud guardada
+                                "Búsqueda por dirección", 
+                                str(direccion), 
                                 link_foto
                             ])
                             st.success("¡Visita guardada exitosamente!")
