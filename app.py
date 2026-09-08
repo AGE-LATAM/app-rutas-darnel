@@ -12,7 +12,7 @@ st.set_page_config(page_title="Rutas Darnel", layout="centered", page_icon="🏍
 st.title("🏍️ Vitrina Móvil Darnel")
 st.markdown("### Gestión de Rutas - Motorizado")
 
-# ID del archivo de Google Sheets (tomado de tu URL)
+# ID del archivo de Google Sheets (El nuevo archivo sin .xlsx)
 SHEET_ID = "1tABY8D8rpQUP2qorNz1KCxea92WjG2PdIA3e-1CcqFU"
 
 @st.cache_resource
@@ -36,7 +36,7 @@ except Exception as e:
     st.stop()
 
 # --- LECTURA DE DATOS ---
-@st.cache_data(ttl=600) # Recarga los datos cada 10 minutos si hay cambios
+@st.cache_data(ttl=600) # Recarga los datos cada 10 minutos
 def obtener_datos():
     hoja = gc.open_by_key(SHEET_ID).worksheet("Bogotá")
     datos = hoja.get_all_records()
@@ -50,11 +50,11 @@ except Exception as e:
     st.stop()
 
 # --- INTERFAZ DEL MOTORIZADO ---
-# 1. Selector de Fecha (Por defecto muestra el día actual)
+# 1. Selector de Fecha con guiones
 fecha_hoy = datetime.datetime.now().strftime("%d-%m-%Y")
 fecha_seleccionada = st.text_input("📅 Fecha de Ruta (DD-MM-AAAA)", value=fecha_hoy)
 
-# Filtrar clientes por la fecha seleccionada en la columna "Fecha_Motorizado"
+# Filtrar clientes por la fecha seleccionada
 if "Fecha_Motorizado" in df_rutas.columns:
     df_dia = df_rutas[df_rutas["Fecha_Motorizado"] == fecha_seleccionada]
 else:
@@ -68,11 +68,18 @@ else:
     
     # 2. Mostrar la lista de clientes
     for index, cliente in df_dia.iterrows():
-        # Usamos la columna D (Nombre_Cliente) y G (Direccion_Principal) según tus imágenes
         nombre = cliente.get("Nombre_Cliente", "Cliente sin nombre")
-        direccion = cliente.get("Direccion_Principal", "Sin dirección")
-        link_maps = cliente.get("Google Maps", "")
-        id_cliente = cliente.get("Código_Cliente", str(index)) # O la columna que uses como ID
+        direccion = cliente.get("Direccion_Centro_5km_Aprox", cliente.get("Direccion_Principal", "Sin dirección"))
+        id_cliente = cliente.get("Código_Cliente", str(index))
+        
+        # Construir link exacto con GPS de latitud y longitud
+        lat = str(cliente.get("Latitud centro", "")).strip().replace(",", ".")
+        lon = str(cliente.get("Longitud centro", "")).strip().replace(",", ".")
+        
+        if lat and lon and lat.lower() != "nan":
+            link_maps = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+        else:
+            link_maps = ""
         
         with st.expander(f"📍 {nombre} - {direccion}"):
             st.write(f"**Dirección:** {direccion}")
@@ -81,15 +88,13 @@ else:
             if link_maps:
                 st.markdown(f"[🗺️ Abrir en Google Maps y Navegar]({link_maps})", unsafe_allow_html=True)
             else:
-                st.warning("Este cliente no tiene link de Google Maps.")
+                st.warning("Este cliente no tiene coordenadas configuradas.")
             
             st.markdown("---")
             st.write("📸 **Constancia de Visita**")
             
             # Captura de foto
             foto = st.camera_input("Tomar foto del punto", key=f"cam_{index}")
-            
-            # Nota sobre GPS para el MVP (Producto Mínimo Viable)
             st.info("📍 *El GPS de alta precisión se registrará al guardar la visita.*")
             
             if st.button("✅ Guardar Visita", key=f"btn_{index}"):
@@ -99,7 +104,7 @@ else:
                             # 1. Subir Foto a Drive
                             carpeta_id = st.secrets["drive_folder_id"]
                             file_metadata = {
-                                'name': f"{id_cliente}_{fecha_hoy.replace('/','-')}.jpg",
+                                'name': f"{id_cliente}_{fecha_hoy}.jpg",
                                 'parents': [carpeta_id]
                             }
                             media = MediaIoBaseUpload(io.BufferedReader(foto), mimetype='image/jpeg', resumable=True)
@@ -110,13 +115,11 @@ else:
                             hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
                             hoja_visitas = gc.open_by_key(SHEET_ID).worksheet("Visitas_Realizadas")
                             
-                            # Como capturar GPS nativo en web es complejo sin https y librerías externas, 
-                            # por ahora guardamos un texto de confirmación para asegurar el flujo.
                             hoja_visitas.append_row([
                                 nombre, 
                                 f"{fecha_seleccionada} {hora_actual}", 
-                                "Capturado", # Latitud (Se mejora en la v2)
-                                "Capturado", # Longitud (Se mejora en la v2)
+                                lat, # Latitud guardada
+                                lon, # Longitud guardada
                                 link_foto
                             ])
                             st.success("¡Visita guardada exitosamente!")
