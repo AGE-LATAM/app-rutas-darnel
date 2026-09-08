@@ -1,3 +1,5 @@
+import requests
+import base64
 import streamlit as st
 import pandas as pd
 import gspread
@@ -100,21 +102,18 @@ else:
                 if foto is not None:
                     with st.spinner("Subiendo foto y guardando registro..."):
                         try:
-                            # 1. Subir Foto a Drive
-                            carpeta_id = st.secrets["drive_folder_id"]
-                            file_metadata = {
-                                'name': f"{id_cliente}_{fecha_hoy}.jpg",
-                                'parents': [carpeta_id]
+                            # 1. Subir Foto vía Puente Apps Script
+                            foto_b64 = base64.b64encode(foto.getvalue()).decode('utf-8')
+                            
+                            script_url = "PEGA_AQUÍ_LA_URL_DE_TU_APPS_SCRIPT"
+                            payload = {
+                                "folder": "1my9s9jGKOkUjfSS85YvpaiXpIcPLhCmU", # ID de tu carpeta original
+                                "name": f"{id_cliente}_{fecha_hoy}.jpg",
+                                "data": foto_b64
                             }
-                            # Apagamos resumable para evitar el bug de Google Drive
-                            media = MediaIoBaseUpload(io.BufferedReader(foto), mimetype='image/jpeg', resumable=False)
-                            archivo_subido = drive_service.files().create(
-                                body=file_metadata, 
-                                media_body=media, 
-                                fields='id, webViewLink',
-                                supportsAllDrives=True
-                            ).execute()
-                            link_foto = archivo_subido.get('webViewLink')
+                            
+                            respuesta = requests.post(script_url, data=payload)
+                            link_foto = respuesta.text
                             
                             # 2. Guardar en Excel
                             hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
