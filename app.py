@@ -105,7 +105,7 @@ else:
                             # 1. Subir Foto vía Puente Apps Script
                             foto_b64 = base64.b64encode(foto.getvalue()).decode('utf-8')
                             
-                            script_url = "PEGA_AQUÍ_LA_URL_DE_TU_APPS_SCRIPT"
+                            script_url = "https://script.google.com/macros/s/AKfycbz2alLhhxHqHQFN9oF7Ik10ze1jLqTA7iqSFe5irMiD68P2npBKXlZXwSMDLLTmWewP/exec"
                             payload = {
                                 "folder": "1my9s9jGKOkUjfSS85YvpaiXpIcPLhCmU", # ID de tu carpeta original
                                 "name": f"{id_cliente}_{fecha_hoy}.jpg",
