@@ -106,7 +106,8 @@ else:
                                 'name': f"{id_cliente}_{fecha_hoy}.jpg",
                                 'parents': [carpeta_id]
                             }
-                            media = MediaIoBaseUpload(io.BufferedReader(foto), mimetype='image/jpeg', resumable=True)
+                            # Apagamos resumable para evitar el bug de Google Drive
+                            media = MediaIoBaseUpload(io.BufferedReader(foto), mimetype='image/jpeg', resumable=False)
                             archivo_subido = drive_service.files().create(
                                 body=file_metadata, 
                                 media_body=media, 
