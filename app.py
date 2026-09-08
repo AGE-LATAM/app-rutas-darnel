@@ -46,7 +46,7 @@ def obtener_datos():
 try:
     df_rutas = obtener_datos()
 except Exception as e:
-    st.error(f"Hubo un error al leer el Excel. Detalle técnico: {e}")
+    st.error(f"Hubo un error al leer el Excel. Detalle técnico: {repr(e)}")
     st.stop()
 
 # --- INTERFAZ DEL MOTORIZADO ---
