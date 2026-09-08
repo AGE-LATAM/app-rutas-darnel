@@ -107,7 +107,12 @@ else:
                                 'parents': [carpeta_id]
                             }
                             media = MediaIoBaseUpload(io.BufferedReader(foto), mimetype='image/jpeg', resumable=True)
-                            archivo_subido = drive_service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink').execute()
+                            archivo_subido = drive_service.files().create(
+                                body=file_metadata, 
+                                media_body=media, 
+                                fields='id, webViewLink',
+                                supportsAllDrives=True
+                            ).execute()
                             link_foto = archivo_subido.get('webViewLink')
                             
                             # 2. Guardar en Excel
