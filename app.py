@@ -51,8 +51,8 @@ except Exception as e:
 
 # --- INTERFAZ DEL MOTORIZADO ---
 # 1. Selector de Fecha (Por defecto muestra el día actual)
-fecha_hoy = datetime.datetime.now().strftime("%d/%m/%Y")
-fecha_seleccionada = st.text_input("📅 Fecha de Ruta (DD/MM/AAAA)", value=fecha_hoy)
+fecha_hoy = datetime.datetime.now().strftime("%d-%m-%Y")
+fecha_seleccionada = st.text_input("📅 Fecha de Ruta (DD-MM-AAAA)", value=fecha_hoy)
 
 # Filtrar clientes por la fecha seleccionada en la columna "Fecha_Motorizado"
 if "Fecha_Motorizado" in df_rutas.columns:
