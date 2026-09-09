@@ -11,7 +11,10 @@ import base64
 st.set_page_config(page_title="Rutas Darnel", layout="centered", page_icon="🏍️")
 
 # 3. Identidad Visual: Banner Superior
-st.image("https://raw.githubusercontent.com/AGE-LATAM/app-rutas-darnel/main/banner.png", use_column_width=True)
+try:
+    st.image("banner.png", use_container_width=True)
+except Exception as e:
+    st.error(f"Error cargando banner: {e}")
 
 st.markdown("### Gestión de Rutas - Motorizado")
 
@@ -152,4 +155,7 @@ st.markdown("<br><br><br>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     st.markdown("<p style='text-align: center; color: gray; font-size: 12px; margin-bottom: 0px;'>Powered by</p>", unsafe_allow_html=True)
-    st.image("https://raw.githubusercontent.com/AGE-LATAM/app-rutas-darnel/main/tremendo.png", use_column_width=True)
+    try:
+        st.image("tremendo.png", use_container_width=True)
+    except:
+        pass
