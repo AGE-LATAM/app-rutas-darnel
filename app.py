@@ -1,25 +1,28 @@
-import requests
-import base64
 import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 import datetime
-import io
+import requests
+import base64
 
 # --- CONFIGURACIÓN DE LA APP ---
 st.set_page_config(page_title="Rutas Darnel", layout="centered", page_icon="🏍️")
-st.title("🏍️ Vitrina Móvil Darnel")
+
+# 3. Identidad Visual: Banner Superior
+try:
+    st.image("banner.jpg", use_column_width=True)
+except:
+    pass
+
 st.markdown("### Gestión de Rutas - Motorizado")
 
-# ID del archivo de Google Sheets (El nuevo archivo sin .xlsx)
+# ID del archivo de Google Sheets
 SHEET_ID = "1tABY8D8rpQUP2qorNz1KCxea92WjG2PdIA3e-1CcqFU"
 
 @st.cache_resource
 def conectar_servicios():
-    """Conecta con Google Sheets y Drive usando las credenciales secretas"""
+    """Conecta con Google Sheets usando las credenciales secretas"""
     cred_dict = dict(st.secrets["gcp_service_account"])
     scopes = [
         'https://www.googleapis.com/auth/spreadsheets', 
@@ -27,36 +30,45 @@ def conectar_servicios():
     ]
     creds = Credentials.from_service_account_info(cred_dict, scopes=scopes)
     gc = gspread.authorize(creds)
-    drive_service = build('drive', 'v3', credentials=creds)
-    return gc, drive_service
+    return gc
 
-# Intentar conectar
 try:
-    gc, drive_service = conectar_servicios()
+    gc = conectar_servicios()
 except Exception as e:
-    st.warning("⚠️ La app está lista. Falta vincular las credenciales en Streamlit (Siguiente paso).")
+    st.warning("⚠️ Faltan credenciales de Google.")
     st.stop()
 
+# --- SELECTOR DINÁMICO DE CIUDADES ---
+# Excluimos las hojas administrativas
+hojas_excluidas = ["Visitas_Realizadas", "Metodología", "Resumen_Rutas"]
+todas_las_hojas = [hoja.title for hoja in gc.open_by_key(SHEET_ID).worksheets()]
+ciudades_disponibles = [hoja for hoja in todas_las_hojas if hoja not in hojas_excluidas]
+
+if not ciudades_disponibles:
+    st.error("No se encontraron hojas de ciudades válidas en el Excel.")
+    st.stop()
+
+# Selector de ciudad
+ciudad_seleccionada = st.selectbox("🏙️ Selecciona tu Ciudad", ciudades_disponibles)
+
 # --- LECTURA DE DATOS ---
-@st.cache_data(ttl=600) # Recarga los datos cada 10 minutos
-def obtener_datos():
-    hoja = gc.open_by_key(SHEET_ID).worksheet("Bogotá")
+@st.cache_data(ttl=600)
+def obtener_datos(ciudad):
+    hoja = gc.open_by_key(SHEET_ID).worksheet(ciudad)
     datos = hoja.get_all_records()
     df = pd.DataFrame(datos)
     return df
 
 try:
-    df_rutas = obtener_datos()
+    df_rutas = obtener_datos(ciudad_seleccionada)
 except Exception as e:
-    st.error(f"Hubo un error al leer el Excel. Detalle técnico: {repr(e)}")
+    st.error(f"Error al leer la ciudad. Detalle: {e}")
     st.stop()
 
 # --- INTERFAZ DEL MOTORIZADO ---
-# 1. Selector de Fecha con guiones
 fecha_hoy = datetime.datetime.now().strftime("%d-%m-%Y")
 fecha_seleccionada = st.text_input("📅 Fecha de Ruta (DD-MM-AAAA)", value=fecha_hoy)
 
-# Filtrar clientes por la fecha seleccionada
 if "Fecha_Motorizado" in df_rutas.columns:
     df_dia = df_rutas[df_rutas["Fecha_Motorizado"] == fecha_seleccionada]
 else:
@@ -64,50 +76,48 @@ else:
     st.stop()
 
 if df_dia.empty:
-    st.info(f"No hay rutas programadas para la fecha: {fecha_seleccionada}")
+    st.info(f"No hay rutas programadas para {ciudad_seleccionada} el {fecha_seleccionada}")
 else:
     st.success(f"Tienes {len(df_dia)} clientes para visitar hoy.")
     
-    # 2. Mostrar la lista de clientes
     for index, cliente in df_dia.iterrows():
         nombre = cliente.get("Nombre_Cliente", "Cliente sin nombre")
-        direccion = cliente.get("Direccion_Centro_5km_Aprox", cliente.get("Direccion_Principal", "Sin dirección"))
+        
+        # 1. Dirección Principal (Columna H)
+        direccion = cliente.get("Direccion_Principal", "")
         id_cliente = cliente.get("Código_Cliente", str(index))
         
-        # Construir link usando la dirección automáticamente
-        if direccion and direccion != "Sin dirección":
-            # Reemplazamos los espacios por símbolos '+' para crear un link web válido
+        if direccion and direccion != "":
             direccion_url = str(direccion).replace(" ", "+")
-            link_maps = f"https://www.google.com/maps/search/?api=1&query={direccion_url},+Bogotá"
+            # Google maps ahora busca la dirección + la ciudad seleccionada
+            link_maps = f"https://www.google.com/maps/search/?api=1&query={direccion_url},+{ciudad_seleccionada}"
         else:
             link_maps = ""
+            direccion = "Sin dirección"
         
         with st.expander(f"📍 {nombre} - {direccion}"):
             st.write(f"**Dirección:** {direccion}")
             
-            # Botón de Navegación
             if link_maps:
                 st.markdown(f"[🗺️ Abrir en Google Maps y Navegar]({link_maps})", unsafe_allow_html=True)
             else:
-                st.warning("Este cliente no tiene una dirección válida para buscar en el mapa.")
+                st.warning("Este cliente no tiene una dirección válida para buscar.")
             
             st.markdown("---")
             st.write("📸 **Constancia de Visita**")
             
-            # Captura de foto
             foto = st.camera_input("Tomar foto del punto", key=f"cam_{index}")
-            st.info("📍 *El GPS de alta precisión se registrará al guardar la visita.*")
             
             if st.button("✅ Guardar Visita", key=f"btn_{index}"):
                 if foto is not None:
                     with st.spinner("Subiendo foto y guardando registro..."):
                         try:
-                            # 1. Subir Foto vía Puente Apps Script
+                            # Subir Foto vía Puente Apps Script
                             foto_b64 = base64.b64encode(foto.getvalue()).decode('utf-8')
                             
                             script_url = "https://script.google.com/macros/s/AKfycbz2alLhhxHqHQFN9oF7Ik10ze1jLqTA7iqSFe5irMiD68P2npBKXlZXwSMDLLTmWewP/exec"
                             payload = {
-                                "folder": "1my9s9jGKOkUjfSS85YvpaiXpIcPLhCmU", # ID de tu carpeta original
+                                "folder": "1my9s9jGKOkUjfSS85YvpaiXpIcPLhCmU",
                                 "name": f"{id_cliente}_{fecha_hoy}.jpg",
                                 "data": foto_b64
                             }
@@ -115,14 +125,15 @@ else:
                             respuesta = requests.post(script_url, data=payload)
                             link_foto = respuesta.text
                             
-                            # 2. Guardar en Excel
+                            # Guardar en Excel
                             hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
                             hoja_visitas = gc.open_by_key(SHEET_ID).worksheet("Visitas_Realizadas")
                             
+                            # Agregamos la ciudad al registro de visitas
                             hoja_visitas.append_row([
                                 nombre, 
                                 f"{fecha_seleccionada} {hora_actual}", 
-                                "Búsqueda por dirección", 
+                                ciudad_seleccionada, 
                                 str(direccion), 
                                 link_foto
                             ])
@@ -131,3 +142,13 @@ else:
                             st.error(f"Error al guardar: {e}")
                 else:
                     st.warning("⚠️ Debes tomar una foto antes de guardar la visita.")
+
+# 4. Sello de la Agencia
+st.markdown("<br><br><br>", unsafe_allow_html=True)
+col1, col2, col3 = st.columns([1, 1, 1])
+with col2:
+    st.markdown("<p style='text-align: center; color: gray; font-size: 12px; margin-bottom: 0px;'>Powered by</p>", unsafe_allow_html=True)
+    try:
+        st.image("tremendo.png", use_column_width=True)
+    except:
+        pass
