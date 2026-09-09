@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 import datetime
+import pytz
 import requests
 import base64
 
@@ -66,15 +67,21 @@ except Exception as e:
     st.stop()
 
 # --- INTERFAZ DEL MOTORIZADO ---
-fecha_hoy = datetime.datetime.now().strftime("%d-%m-%Y")
+# 1. Configurar zona horaria de Bogotá
+zona_colombia = pytz.timezone('America/Bogota')
+fecha_hoy = datetime.datetime.now(zona_colombia).strftime("%d-%m-%Y")
 fecha_seleccionada = st.text_input("📅 Fecha de Ruta (DD-MM-AAAA)", value=fecha_hoy)
 
+# 2. Limpiar espacios invisibles y filtrar
 if "Fecha_Motorizado" in df_rutas.columns:
-    df_dia = df_rutas[df_rutas["Fecha_Motorizado"] == fecha_seleccionada]
+    # Convertimos la columna a texto y borramos espacios fantasma
+    df_rutas["Fecha_Motorizado"] = df_rutas["Fecha_Motorizado"].astype(str).str.strip()
+    fecha_limpia = fecha_seleccionada.strip()
+    
+    df_dia = df_rutas[df_rutas["Fecha_Motorizado"] == fecha_limpia]
 else:
     st.error("No se encontró la columna 'Fecha_Motorizado' en el Excel.")
     st.stop()
-
 if df_dia.empty:
     st.info(f"No hay rutas programadas para {ciudad_seleccionada} el {fecha_seleccionada}")
 else:
