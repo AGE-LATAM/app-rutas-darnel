@@ -12,7 +12,7 @@ st.set_page_config(page_title="Rutas Darnel", layout="centered", page_icon="🏍
 
 # 3. Identidad Visual: Banner Superior
 try:
-    st.image("banner.png", use_container_width=True)
+    st.image("https://raw.githubusercontent.com/AGE-LATAM/app-rutas-darnel/main/banner.png", use_container_width=True)
 except Exception as e:
     st.error(f"Error cargando banner: {e}")
 
@@ -82,6 +82,7 @@ if "Fecha_Motorizado" in df_rutas.columns:
 else:
     st.error("No se encontró la columna 'Fecha_Motorizado' en el Excel.")
     st.stop()
+
 if df_dia.empty:
     st.info(f"No hay rutas programadas para {ciudad_seleccionada} el {fecha_seleccionada}")
 else:
@@ -115,6 +116,14 @@ else:
             
             foto = st.camera_input("Tomar foto del punto", key=f"cam_{index}")
             
+            # --- NUEVO CAMPO: VISITA EFECTIVA ---
+            visita_efectiva = st.radio(
+                "¿La visita fue efectiva?", 
+                options=["Sí", "No (Local cerrado, etc.)"], 
+                key=f"efectiva_{index}",
+                horizontal=True
+            )
+            
             if st.button("✅ Guardar Visita", key=f"btn_{index}"):
                 if foto is not None:
                     with st.spinner("Subiendo foto y guardando registro..."):
@@ -133,15 +142,16 @@ else:
                             link_foto = respuesta.text
                             
                             # Guardar en Excel
-                            hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
+                            hora_actual = datetime.datetime.now(zona_colombia).strftime("%H:%M:%S")
                             hoja_visitas = gc.open_by_key(SHEET_ID).worksheet("Visitas_Realizadas")
                             
-                            # Agregamos la ciudad al registro de visitas
+                            # Agregamos los datos, incluyendo la efectividad de la visita
                             hoja_visitas.append_row([
                                 nombre, 
                                 f"{fecha_seleccionada} {hora_actual}", 
                                 ciudad_seleccionada, 
-                                str(direccion), 
+                                str(direccion),
+                                visita_efectiva, # <-- EL NUEVO CAMPO
                                 link_foto
                             ])
                             st.success("¡Visita guardada exitosamente!")
@@ -156,6 +166,6 @@ col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     st.markdown("<p style='text-align: center; color: gray; font-size: 12px; margin-bottom: 0px;'>Powered by</p>", unsafe_allow_html=True)
     try:
-        st.image("tremendo.png", use_container_width=True)
+        st.image("https://raw.githubusercontent.com/AGE-LATAM/app-rutas-darnel/main/tremendo.png", use_container_width=True)
     except:
         pass
