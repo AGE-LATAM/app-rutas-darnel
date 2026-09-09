@@ -12,7 +12,7 @@ st.set_page_config(page_title="Rutas Darnel", layout="centered", page_icon="🏍
 
 # 3. Identidad Visual: Banner Superior
 try:
-    st.image("banner.jpg", use_column_width=True)
+    st.image("banner.png", use_column_width=True)
 except:
     pass
 
