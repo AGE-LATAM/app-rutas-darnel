@@ -116,12 +116,19 @@ else:
             
             foto = st.camera_input("Tomar foto del punto", key=f"cam_{index}")
             
-            # --- NUEVO CAMPO: VISITA EFECTIVA ---
+            # --- CAMPO: VISITA EFECTIVA ---
             visita_efectiva = st.radio(
                 "¿La visita fue efectiva?", 
                 options=["Sí", "No (Local cerrado, etc.)"], 
                 key=f"efectiva_{index}",
                 horizontal=True
+            )
+            
+            # --- NUEVO CAMPO: COMENTARIOS ---
+            comentarios = st.text_input(
+                "Comentarios / Observaciones (Opcional):",
+                placeholder="Ej. El local estaba cerrado...",
+                key=f"comentario_{index}"
             )
             
             if st.button("✅ Guardar Visita", key=f"btn_{index}"):
@@ -145,14 +152,15 @@ else:
                             hora_actual = datetime.datetime.now(zona_colombia).strftime("%H:%M:%S")
                             hoja_visitas = gc.open_by_key(SHEET_ID).worksheet("Visitas_Realizadas")
                             
-                            # Agregamos los datos, incluyendo la efectividad de la visita
+                            # Agregamos los datos en el orden exacto de tu Excel (A al G)
                             hoja_visitas.append_row([
                                 nombre, 
                                 f"{fecha_seleccionada} {hora_actual}", 
                                 ciudad_seleccionada, 
                                 str(direccion),
-                                visita_efectiva, # <-- EL NUEVO CAMPO
-                                link_foto
+                                visita_efectiva, 
+                                link_foto, # <-- La foto se queda en la columna F
+                                comentarios # <-- Los comentarios van a la columna G
                             ])
                             st.success("¡Visita guardada exitosamente!")
                         except Exception as e:
